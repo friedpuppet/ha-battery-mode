@@ -1,0 +1,106 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Deye inverter",
+        "description": "The ha-solarman device of the Deye hybrid inverter. Modes are written to its registers.",
+        "data": {
+          "device_id": "Inverter"
+        }
+      },
+      "entities": {
+        "title": "Battery and grid entities",
+        "data": {
+          "soc_entity": "Battery charge (%)",
+          "current_entity": "Battery current (A)",
+          "power_entity": "Battery power (W)",
+          "grid_entity": "Grid present"
+        },
+        "data_description": {
+          "current_entity": "Negative while charging (Deye's sign).",
+          "power_entity": "Negative while charging.",
+          "grid_entity": "On while the flat runs from the grid; a definite «off» cancels the training drain."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This inverter is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Battery mode options",
+        "data": {
+          "reserve": "Day reserve in the night mode",
+          "night_start": "Night tariff starts",
+          "night_end": "Night tariff ends",
+          "normal_current": "Grid charging current (Max mode)",
+          "fast_current": "Fast charging current (night, charge now, training)",
+          "peak_limit": "Grid peak shaving limit",
+          "floor": "Training: discharge down to",
+          "full_soc": "Full: charge at least",
+          "full_current": "Full: charge current at most",
+          "full_minutes": "Full: for at least"
+        },
+        "data_description": {
+          "peak_limit": "Deye cuts charging (and helps from the battery) to keep grid import under this.",
+          "floor": "The inverter's shutdown SOC is lowered to this for the training drain and restored after.",
+          "full_soc": "Deye often sits at 99 % on float."
+        }
+      }
+    },
+    "error": {
+      "bad_night_window": "The night window must leave room for six distinct TOU slots."
+    }
+  },
+  "entity": {
+    "select": {
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "max": "Max charge",
+          "night": "Night charging",
+          "training": "Training"
+        }
+      }
+    },
+    "switch": {
+      "charge_now": {
+        "name": "Charge to 100 % now"
+      }
+    },
+    "button": {
+      "apply": {
+        "name": "Apply mode again"
+      },
+      "cancel_training": {
+        "name": "Cancel training"
+      }
+    },
+    "sensor": {
+      "actual_mode": {
+        "name": "Actual mode",
+        "state": {
+          "max": "Max charge",
+          "night": "Night charging",
+          "charge_now": "Charging to 100 %",
+          "training_drain": "Training: discharge",
+          "training_charge": "Training: charge",
+          "manual": "Manual settings",
+          "unknown": "Unknown"
+        }
+      },
+      "training": {
+        "name": "Training",
+        "state": {
+          "idle": "Not run",
+          "drain": "Discharging",
+          "charge": "Charging",
+          "done": "Done",
+          "aborted": "Aborted"
+        }
+      }
+    }
+  }
+}
