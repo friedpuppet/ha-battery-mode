@@ -79,6 +79,7 @@ async def test_full_cycle(hass: HomeAssistant, deye: FakeDeye, freezer: FrozenDa
     assert state.state == "done"
     assert state.attributes["valid"] is True
     assert state.attributes["bottom_soc"] == 5
+    assert state.attributes["bottom_reason"] == "soc"
     assert hass.states.get(MODE).state == "night"  # back to the mode before
     assert hass.states.get(ACTUAL).state == "night"
     assert deye.registers[REG_SHUTDOWN_SOC] == 20
@@ -93,6 +94,54 @@ async def test_stall_counts_as_bottom(hass: HomeAssistant, deye: FakeDeye, freez
     await tick(hass, freezer, 2)
     assert hass.states.get(TRAINING).state == "charge"
     assert hass.states.get(TRAINING).attributes["bottom_soc"] == 7
+    assert hass.states.get(TRAINING).attributes["bottom_reason"] == "stall"
+
+
+async def test_stall_far_above_floor_is_the_bottom(
+    hass: HomeAssistant, deye: FakeDeye, freezer: FrozenDateTimeFactory
+) -> None:
+    """Deye stops at its shutdown voltage or a BMS limit with a lot of SOC left: still the bottom."""
+    await start(hass, deye)
+    set_battery(hass, 40, current=10)  # discharging
+    await tick(hass, freezer, 10)
+    assert hass.states.get(TRAINING).state == "drain"
+    set_battery(hass, 18, current=0, power=5)
+    await tick(hass, freezer, 4)
+    assert hass.states.get(TRAINING).state == "drain"
+    set_battery(hass, 18, current=0.3, power=20)  # still not discharging
+    await tick(hass, freezer, 1.5)
+    state = hass.states.get(TRAINING)
+    assert state.state == "charge"
+    assert state.attributes["bottom_soc"] == 18
+    assert state.attributes["bottom_reason"] == "stall"
+    assert slots(deye) == [100] * 6
+
+
+async def test_short_pause_is_not_the_bottom(
+    hass: HomeAssistant, deye: FakeDeye, freezer: FrozenDateTimeFactory
+) -> None:
+    await start(hass, deye)
+    set_battery(hass, 40, current=0, power=0)
+    await tick(hass, freezer, 4)
+    set_battery(hass, 40, current=10)  # discharging again
+    await tick(hass, freezer, 2)
+    set_battery(hass, 39, current=0, power=0)
+    await tick(hass, freezer, 4)
+    assert hass.states.get(TRAINING).state == "drain"
+
+
+async def test_stall_without_the_drain_profile_is_not_the_bottom(
+    hass: HomeAssistant, deye: FakeDeye, freezer: FrozenDateTimeFactory
+) -> None:
+    """Someone changed the slots in the Deye app: a battery at rest then says nothing about the bottom."""
+    await start(hass, deye)
+    deye.registers[REG_SLOT_SOC + 2] = 50
+    set_battery(hass, 40, current=10)
+    await tick(hass, freezer, 5.5)
+    assert hass.states.get(ACTUAL).state == "manual"
+    set_battery(hass, 40, current=0, power=0)
+    await tick(hass, freezer, 10)
+    assert hass.states.get(TRAINING).state == "drain"
 
 
 async def test_grid_loss_high_soc_restores_at_once(hass: HomeAssistant, deye: FakeDeye) -> None:

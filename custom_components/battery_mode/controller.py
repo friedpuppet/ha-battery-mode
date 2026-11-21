@@ -62,7 +62,6 @@ from .const import (
     SLOT_POWER,
     STALL_MINUTES,
     STALL_POWER,
-    STALL_SOC_MARGIN,
     STORAGE_VERSION,
 )
 from .inverter import DeyeClient, InverterError
@@ -550,11 +549,12 @@ class Controller:
                 if self._grid_off():
                     self._end_training(PHASE_ABORTED, "grid_lost")
                     changed = apply = True
-                elif soc <= floor or self._stalled(now, soc, power, floor):
+                elif (reason := "soc" if soc <= floor else "stall" if self._stalled(now, power) else None):
                     training.update(
                         phase=PHASE_CHARGE,
                         bottom_at=now.isoformat(),
                         bottom_soc=soc,
+                        bottom_reason=reason,
                         charged_ah=0.0,
                         charged_kwh=0.0,
                     )
@@ -562,7 +562,7 @@ class Controller:
                     self.restore_shutdown = training.get("original_shutdown_soc")
                     self._sample = (now, current, power)
                     self._full_since = None
-                    _LOGGER.info("Training: bottom at %s %%, charging", soc)
+                    _LOGGER.info("Training: bottom at %s %% (%s), charging", soc, reason)
                     changed = apply = True
             elif training.get("phase") == PHASE_CHARGE:
                 self._integrate(now, current, power)
@@ -599,9 +599,19 @@ class Controller:
         await self._maybe_restore_shutdown()
 
     @callback
-    def _stalled(self, now: datetime, soc: float, power: float | None, floor: float) -> bool:
-        """Deye stopped discharging near the floor (e.g. it clamps to its own limit)."""
-        if soc <= floor + STALL_SOC_MARGIN and power is not None and power <= STALL_POWER:
+    def _stalled(self, now: datetime, power: float | None) -> bool:
+        """Deye stopped discharging at any SOC while the drain profile is in place.
+
+        With every slot at the floor and grid charge off, a battery that doesn't discharge means the
+        inverter or the BMS hit a limit of its own: shutdown voltage, a BMS discharge limit, its own
+        SOC clamp. Whatever it was, that is the bottom.
+        """
+        if (
+            self.actual == PROFILE_TRAINING_DRAIN
+            and not self.pending
+            and power is not None
+            and power <= STALL_POWER
+        ):
             if self._stall_since is None:
                 self._stall_since = now
             return now - self._stall_since >= timedelta(minutes=STALL_MINUTES)

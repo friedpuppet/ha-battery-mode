@@ -69,7 +69,6 @@ PHASE_ABORTED: Final = "aborted"
 PHASES: Final = (PHASE_IDLE, PHASE_DRAIN, PHASE_CHARGE, PHASE_DONE, PHASE_ABORTED)
 
 # Training: the drain is over when Deye stops discharging this close to the floor
-STALL_SOC_MARGIN: Final = 3  # %
 STALL_POWER: Final = 50  # W
 STALL_MINUTES: Final = 5
 # The original shutdown SOC comes back once the battery is this far above it

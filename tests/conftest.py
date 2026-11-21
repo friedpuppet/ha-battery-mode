@@ -127,7 +127,7 @@ async def deye(hass: HomeAssistant) -> FakeDeye:
 def set_battery(hass: HomeAssistant, soc: float | str, current: float = 0, power: float | None = None) -> None:
     hass.states.async_set(SOC, str(soc))
     hass.states.async_set(CURRENT, str(current))
-    hass.states.async_set(POWER, str(power if power is not None else -current * 52))
+    hass.states.async_set(POWER, str(power if power is not None else current * 52))  # + = discharging, as on Deye
 
 
 def make_entry(options: dict[str, Any] | None = None) -> MockConfigEntry:

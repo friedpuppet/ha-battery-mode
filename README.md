@@ -28,8 +28,11 @@ Six slots: two over the night window (23:00–07:00 by default), four over the d
   HA can't see the inverter. Attributes: `diff` (want/have per register), `pending`, `error`,
   `last_read`, `last_applied`, `clock_drift`, `restore_shutdown_soc`.
 - `sensor` **Training** (enum idle/drain/charge/done/aborted): attributes `started`, `start_soc`,
-  `bottom_at`, `bottom_soc`, `charged_ah`, `charged_kwh`, `finished`, `valid`, `reason`
+  `bottom_at`, `bottom_soc`, `bottom_reason`, `charged_ah`, `charged_kwh`, `finished`, `valid`, `reason`
   (`grid_lost`, `cancelled`), `original_shutdown_soc`, `prev_mode`.
+  The bottom is reached when SOC ≤ the floor (`bottom_reason: soc`) or when the battery hasn't
+  discharged (≤ 50 W) for 5 minutes at any SOC while the drain profile is in place (`stall`: Deye's
+  shutdown voltage, a BMS discharge limit or its own SOC clamp stopped it).
 - `switch` **Charge to 100 % now**.
 - `button` **Apply mode again** (rewrites the profile, e.g. after a manual change), **Cancel training**.
 
