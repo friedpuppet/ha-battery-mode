@@ -128,6 +128,7 @@ class Controller:
         self._sample: tuple[datetime, float | None, float | None] | None = None
         self._restoring = False
         self._applying = False
+        self._dirty = False
 
     # ---- settings and inputs -------------------------------------------------------------
 
@@ -236,6 +237,8 @@ class Controller:
         await self.async_sync_clock()
 
     async def _on_refresh(self, _now: datetime) -> None:
+        if self.mode == MODE_TRAINING:
+            self._save()  # the charge counters
         await self.async_refresh()
 
     async def _on_clock(self, _now: datetime) -> None:
@@ -500,6 +503,9 @@ class Controller:
     @callback
     def _on_tick(self, _now: datetime) -> None:
         self._evaluate()
+        if self._dirty:
+            self._dirty = False
+            self._notify()
 
     @callback
     def _is_full(self, now: datetime, soc: float, current: float | None) -> bool:
@@ -568,8 +574,8 @@ class Controller:
                     self._end_training(PHASE_DONE, None)
                     changed = apply = True
                 else:
-                    self._save(60)
-                    self._notify()
+                    # the counters change every sample: entities on the tick, storage on the refresh
+                    self._dirty = True
         elif self.charge_now and self._is_full(now, soc, current):
             _LOGGER.info("Charge now: full")
             self.charge_now = False
