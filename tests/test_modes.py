@@ -65,6 +65,10 @@ async def test_night_mode(hass: HomeAssistant, deye: FakeDeye) -> None:
     assert deye.registers[0xD2] == 60
     assert hass.states.get(ACTUAL).state == "night"
     assert hass.states.get(MODE).state == "night"
+    attrs = hass.states.get(ACTUAL).attributes
+    assert attrs["slots"][1] == {"time": "07:00", "soc": 30, "grid": True}
+    assert attrs["grid_charge_current"] == 60
+    assert attrs["peak_limit"] == 5000 and attrs["peak_shaving"] is True
 
 
 async def test_blind_inverter_queues_the_profile(hass: HomeAssistant, deye: FakeDeye) -> None:

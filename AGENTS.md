@@ -7,7 +7,7 @@ on (Phase 0 tests, register quirks): `../deye-inverter/battery-modes.md`. README
 
 ## Status
 
-- v0.1.0 written 2026-11-21, `uv run pytest`: 33 passed (HA 2026.8.3 test harness). Not yet on GitHub / the live HA.
+- v0.1.0 released 2026-11-21, installed on the live HA via Marketplace (repo id `1466029200`), entry «Батарея» `01M7XQQE5FZ7JTZBWVHFN7A1P5`. v0.1.1: `slots` / currents / peak attributes on Actual mode (ha-solarman polls those registers rarely, its entities lag). Tests: 33 passed.
 - Same conventions as `../grid-load-shedding/` (personal project, Marketplace custom repository, hassfest + pytest CI,
   bump `manifest.json` `version` per release).
 
@@ -28,3 +28,14 @@ on (Phase 0 tests, register quirks): `../deye-inverter/battery-modes.md`. README
   short overloads; lower it if the breaker trips).
 - Training: one cycle, floor 5 %, back to the previous mode.
 - Charge-now override added (one-shot, ends when full).
+
+## Live
+
+- Entity ids (renamed after install): `select.batareia_rezhym`, `sensor.batareia_rezhym_fakt`, `sensor.batareia_trenuvannia`,
+  `switch.batareia_zariadyty_zaraz`, `button.batareia_zastosuvaty_rezhym`, `button.batareia_skasuvaty_trenuvannia`;
+  device «Батарея».
+- First apply 2026-11-21 00:23 UTC: only the slot times changed (01/05/…/21 → 03/07/11/15/19/23), mode Максимум.
+- Updating: bump version, push, GitHub release, then WS `marketplace/repository/install` with `repository: "1466029200"`,
+  `version: "vX.Y.Z"`, then restart Core (updates need a restart).
+- Push: `git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$(cat ~/.config/github/token-grid-load-shedding)" | base64 -w0)" push`
+  (that PAT also covers this repo).
