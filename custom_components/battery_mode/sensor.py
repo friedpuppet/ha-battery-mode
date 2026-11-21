@@ -16,6 +16,7 @@ from .registers import (
     REG_GRID_CHARGE_CURRENT,
     REG_MAX_CHARGE_CURRENT,
     REG_PEAK_LIMIT,
+    REG_LOW_SOC,
     REG_SHUTDOWN_SOC,
     REG_SLOT_CHARGE,
     REG_SLOT_SOC,
@@ -41,6 +42,7 @@ def _inverter(registers: dict[int, int] | None) -> dict[str, Any]:
         "grid_charge_current": registers[REG_GRID_CHARGE_CURRENT],
         "max_charge_current": registers[REG_MAX_CHARGE_CURRENT],
         "shutdown_soc": registers[REG_SHUTDOWN_SOC],
+        "low_soc": registers[REG_LOW_SOC],
         "peak_shaving": bool(registers[REG_FLAGS] & FLAG_PEAK_SHAVING),
         "peak_limit": registers[REG_PEAK_LIMIT],
     }
@@ -78,6 +80,7 @@ class ActualModeSensor(BatteryModeEntity, SensorEntity):
             "last_applied": _iso(c.last_applied),
             "clock_drift": c.clock_drift,
             "restore_shutdown_soc": c.restore_shutdown,
+            "restore_low_soc": c.restore_low,
             **_inverter(c.registers),
         }
 

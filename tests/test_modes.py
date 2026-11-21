@@ -20,19 +20,19 @@ from .conftest import ACTUAL, APPLY, CHARGE_NOW, GRID, MODE, SOC, FakeDeye, make
 
 async def select(hass: HomeAssistant, option: str) -> None:
     await hass.services.async_call("select", "select_option", {"entity_id": MODE, "option": option}, blocking=True)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
 
 async def press(hass: HomeAssistant, entity_id: str) -> None:
     await hass.services.async_call("button", "press", {"entity_id": entity_id}, blocking=True)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
 
 
 async def tick(hass: HomeAssistant, freezer: FrozenDateTimeFactory, minutes: float, step: float = 0.5) -> None:
     for _ in range(int(minutes / step)):
         freezer.tick(timedelta(minutes=step))
         async_fire_time_changed(hass)
-        await hass.async_block_till_done()
+        await hass.async_block_till_done(wait_background_tasks=True)
 
 
 async def test_startup_reads_and_writes_nothing(hass: HomeAssistant, deye: FakeDeye) -> None:
@@ -79,7 +79,7 @@ async def test_blind_inverter_queues_the_profile(hass: HomeAssistant, deye: Fake
     assert hass.states.get(ACTUAL).state == "unknown"
     assert hass.states.get(ACTUAL).attributes["pending"] is True
     set_battery(hass, 80)  # inverter visible again
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(ACTUAL).state == "night"
     assert hass.states.get(ACTUAL).attributes["pending"] is False
 
@@ -134,7 +134,7 @@ async def test_charge_now_ends_when_full(hass: HomeAssistant, deye: FakeDeye, fr
     await setup_entry(hass)
     await select(hass, "night")
     await hass.services.async_call("switch", "turn_on", {"entity_id": CHARGE_NOW}, blocking=True)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(ACTUAL).state == "charge_now"
     assert [deye.registers[REG_SLOT_SOC + i] for i in range(6)] == [100] * 6
     set_battery(hass, 99, current=-30)
@@ -174,6 +174,6 @@ async def test_mode_survives_restart(hass: HomeAssistant, deye: FakeDeye) -> Non
     entry = await setup_entry(hass)
     await select(hass, "night")
     await hass.config_entries.async_reload(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(MODE).state == "night"
     assert hass.states.get(SOC).state == "99"

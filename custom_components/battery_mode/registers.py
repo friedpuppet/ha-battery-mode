@@ -16,7 +16,8 @@ from datetime import datetime
 
 REG_CLOCK = 0x16  # 3 registers: YY<<8|MM, DD<<8|hh, mm<<8|ss, local time
 REG_MAX_CHARGE_CURRENT = 0xD2  # A
-REG_SHUTDOWN_SOC = 0xD9  # %
+REG_SHUTDOWN_SOC = 0xD9  # %, the floor without grid
+REG_LOW_SOC = 0xDB  # % «Low Batt»: the floor with grid (Deye won't discharge below it on-grid)
 REG_GRID_CHARGE_CURRENT = 0xE6  # A
 REG_GRID_CHARGE = 0xE8  # 1 = battery charging from the grid allowed
 REG_TOU = 0xF8  # bit 0 enable, bits 1..7 Monday..Sunday
@@ -51,6 +52,7 @@ def register_name(address: int) -> str:
     return {
         REG_MAX_CHARGE_CURRENT: "max_charge_current",
         REG_SHUTDOWN_SOC: "shutdown_soc",
+        REG_LOW_SOC: "low_soc",
         REG_GRID_CHARGE_CURRENT: "grid_charge_current",
         REG_GRID_CHARGE: "grid_charge",
         REG_TOU: "time_of_use",

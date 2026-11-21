@@ -67,6 +67,7 @@ from .const import (
 from .inverter import DeyeClient, InverterError
 from .registers import (
     REG_CLOCK,
+    REG_LOW_SOC,
     REG_SHUTDOWN_SOC,
     Field,
     Profile,
@@ -113,6 +114,7 @@ class Controller:
         self.pending = False  # a profile is waiting for the inverter to be reachable
         self.training: dict[str, Any] = {"phase": PHASE_IDLE}
         self.restore_shutdown: int | None = None  # original shutdown SOC, to be written back
+        self.restore_low: int | None = None  # original Low Batt SOC, to be written back
 
         # runtime
         self.registers: dict[int, int] | None = None
@@ -193,6 +195,7 @@ class Controller:
         self.pending = bool(data.get("pending", False))
         self.training = data.get("training") or {"phase": PHASE_IDLE}
         self.restore_shutdown = data.get("restore_shutdown")
+        self.restore_low = data.get("restore_low")
 
         entities = [
             self.entry.data[k]
@@ -222,6 +225,7 @@ class Controller:
             "pending": self.pending,
             "training": self.training,
             "restore_shutdown": self.restore_shutdown,
+            "restore_low": self.restore_low,
         }
 
     @callback
@@ -250,7 +254,9 @@ class Controller:
         if self.mode == MODE_TRAINING:
             if self.training.get("phase") == PHASE_DRAIN:
                 profile = profile_drain(settings)
+                # with grid Deye stops at Low Batt, without grid at the shutdown SOC: both go to the floor
                 profile[REG_SHUTDOWN_SOC] = Field(settings.floor)
+                profile[REG_LOW_SOC] = Field(settings.floor)
                 return PROFILE_TRAINING_DRAIN, profile
             return PROFILE_TRAINING_CHARGE, profile_charge_fast(settings)
         if self.charge_now:
@@ -297,7 +303,7 @@ class Controller:
                 except InverterError as err:
                     _LOGGER.warning("Reading the inverter failed: %s", err)
             self._notify()
-        await self._maybe_restore_shutdown()
+        await self._maybe_restore()
 
     async def async_apply(self) -> bool:
         """Write the wanted profile (only what differs), read back, verify."""
@@ -353,32 +359,38 @@ class Controller:
             self._notify()
             return False
 
-    async def _maybe_restore_shutdown(self) -> None:
-        """Write the original shutdown SOC back once the battery is safely above it."""
-        target = self.restore_shutdown
-        soc = self.soc
-        if target is None or soc is None or self._restoring or soc < target + RESTORE_SHUTDOWN_MARGIN:
+    async def _maybe_restore(self) -> None:
+        """Write back what training lowered: Low Batt at once, the shutdown SOC once the battery is above it."""
+        if self._restoring or (self.mode == MODE_TRAINING and self.training.get("phase") == PHASE_DRAIN):
             return
-        if self.mode == MODE_TRAINING and self.training.get("phase") == PHASE_DRAIN:
+        soc = self.soc
+        due = []
+        if self.restore_low is not None:
+            due.append((REG_LOW_SOC, "restore_low", "Low Batt SOC"))
+        if self.restore_shutdown is not None and soc is not None and soc >= self.restore_shutdown + RESTORE_SHUTDOWN_MARGIN:
+            due.append((REG_SHUTDOWN_SOC, "restore_shutdown", "shutdown SOC"))
+        if not due:
             return
         self._restoring = True
         try:
             async with self._lock:
-                try:
-                    current = (await self.client.read(REG_SHUTDOWN_SOC, 1))[REG_SHUTDOWN_SOC]
-                    if current != target:
-                        await self.client.write(REG_SHUTDOWN_SOC, [target])
-                        await asyncio.sleep(SETTLE_SECONDS)
-                        current = (await self.client.read(REG_SHUTDOWN_SOC, 1))[REG_SHUTDOWN_SOC]
-                except InverterError as err:
-                    _LOGGER.warning("Restoring the shutdown SOC failed: %s", err)
-                    return
-                if current == target:
-                    _LOGGER.info("Shutdown SOC restored to %s %%", target)
-                    self.restore_shutdown = None
-                    self._save()
-                else:
-                    _LOGGER.warning("The inverter kept shutdown SOC %s instead of %s", current, target)
+                for register, attr, name in due:
+                    target = getattr(self, attr)
+                    try:
+                        current = (await self.client.read(register, 1))[register]
+                        if current != target:
+                            await self.client.write(register, [target])
+                            await asyncio.sleep(SETTLE_SECONDS)
+                            current = (await self.client.read(register, 1))[register]
+                    except InverterError as err:
+                        _LOGGER.warning("Restoring the %s failed: %s", name, err)
+                        return
+                    if current == target:
+                        _LOGGER.info("%s restored to %s %%", name, target)
+                        setattr(self, attr, None)
+                        self._save()
+                    else:
+                        _LOGGER.warning("The inverter kept %s %s instead of %s", name, current, target)
         finally:
             self._restoring = False
         self._notify()
@@ -421,7 +433,7 @@ class Controller:
         self._save()
         self._notify()
         await self.async_apply()
-        await self._maybe_restore_shutdown()
+        await self._maybe_restore()
 
     async def async_set_charge_now(self, on: bool) -> None:
         if on and self.mode == MODE_TRAINING:
@@ -441,26 +453,28 @@ class Controller:
         self._save()
         self._notify()
         await self.async_apply()
-        await self._maybe_restore_shutdown()
+        await self._maybe_restore()
 
     async def _start_training(self) -> None:
         if not self.visible:
             raise HomeAssistantError("HA не бачить інвертор")
         if self._grid_off():
             raise HomeAssistantError("Немає мережі: тренування починається лише з мережею")
-        if self.restore_shutdown is not None:
-            original = self.restore_shutdown  # the register may still hold the last floor
-        else:
-            try:
-                async with self._lock:
-                    original = (await self.client.read(REG_SHUTDOWN_SOC, 1))[REG_SHUTDOWN_SOC]
-            except InverterError as err:
-                raise HomeAssistantError(f"Не вдалося прочитати shutdown SOC: {err}") from err
+        try:
+            async with self._lock:
+                values = await self.client.read(REG_SHUTDOWN_SOC, REG_LOW_SOC - REG_SHUTDOWN_SOC + 1)
+        except InverterError as err:
+            raise HomeAssistantError(f"Не вдалося прочитати shutdown / Low Batt SOC: {err}") from err
+        # a restore still due means the register may still hold the last floor
+        original = self.restore_shutdown if self.restore_shutdown is not None else values[REG_SHUTDOWN_SOC]
+        original_low = self.restore_low if self.restore_low is not None else values[REG_LOW_SOC]
         self.restore_shutdown = None
+        self.restore_low = None
         self.training = {
             "phase": PHASE_DRAIN,
             "prev_mode": self.mode,
             "original_shutdown_soc": original,
+            "original_low_soc": original_low,
             "started": dt_util.utcnow().isoformat(),
             "start_soc": self.soc,
             "bottom_at": None,
@@ -485,6 +499,7 @@ class Controller:
             # the shutdown SOC is at the floor; in the charge phase restore_shutdown is already set
             # (or done)
             self.restore_shutdown = training.get("original_shutdown_soc")
+            self.restore_low = training.get("original_low_soc")
         training["phase"] = phase
         training["finished"] = dt_util.utcnow().isoformat()
         if reason and not training.get("reason"):
@@ -560,6 +575,8 @@ class Controller:
                     )
                     # back to the original shutdown SOC once the charge is safely above it
                     self.restore_shutdown = training.get("original_shutdown_soc")
+                    # Low Batt only stops discharge with grid (and warns without): back at once
+                    self.restore_low = training.get("original_low_soc")
                     self._sample = (now, current, power)
                     self._full_since = None
                     _LOGGER.info("Training: bottom at %s %% (%s), charging", soc, reason)
@@ -586,9 +603,11 @@ class Controller:
             self._notify()
         if apply or (self.pending and not self._applying):
             self._background(self._apply_then_restore(), "apply")
-        elif self.restore_shutdown is not None and not self._restoring:
-            if soc >= self.restore_shutdown + RESTORE_SHUTDOWN_MARGIN:
-                self._background(self._maybe_restore_shutdown(), "restore shutdown SOC")
+        elif not self._restoring and (
+            self.restore_low is not None
+            or (self.restore_shutdown is not None and soc >= self.restore_shutdown + RESTORE_SHUTDOWN_MARGIN)
+        ):
+            self._background(self._maybe_restore(), "restore SOC limits")
 
     async def _apply_then_restore(self) -> None:
         self._applying = True
@@ -596,7 +615,7 @@ class Controller:
             await self.async_apply()
         finally:
             self._applying = False
-        await self._maybe_restore_shutdown()
+        await self._maybe_restore()
 
     @callback
     def _stalled(self, now: datetime, power: float | None) -> bool:

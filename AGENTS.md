@@ -7,7 +7,7 @@ on (Phase 0 tests, register quirks): `../deye-inverter/battery-modes.md`. README
 
 ## Status
 
-- v0.1.0 released 2026-11-21, installed on the live HA via Marketplace (repo id `1466029200`), entry «Батарея» `01M7XQQE5FZ7JTZBWVHFN7A1P5`. v0.1.1: `slots` / currents / peak attributes on Actual mode (ha-solarman polls those registers rarely, its entities lag). v0.1.2: the training bottom is also a stall at any SOC (was only ≤ floor + 3 %), attribute `bottom_reason` soc/stall. Tests: 36 passed.
+- v0.1.0 released 2026-11-21, installed on the live HA via Marketplace (repo id `1466029200`), entry «Батарея» `01M7XQQE5FZ7JTZBWVHFN7A1P5`. v0.1.1: `slots` / currents / peak attributes on Actual mode (ha-solarman polls those registers rarely, its entities lag). v0.1.2: the training bottom is also a stall at any SOC (was only ≤ floor + 3 %), attribute `bottom_reason` soc/stall. v0.1.3: the drain phase lowers Low Batt (0xDB) too: with grid Deye stops at Low Batt, not at the shutdown SOC (first training stopped at 35 % = Low Batt on 2026-11-21). Tests wait for background tasks (`wait_background_tasks=True`). Tests: 37 passed.
 - Same conventions as `../grid-load-shedding/` (personal project, Marketplace custom repository, hassfest + pytest CI,
   bump `manifest.json` `version` per release).
 
