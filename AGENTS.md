@@ -15,9 +15,9 @@ on (Phase 0 tests, register quirks): `../deye-inverter/battery-modes.md`. README
 
 | Path | What |
 |---|---|
-| `custom_components/battery_mode/registers.py` | Pure: register map, slot layout, profiles (max / night / charge fast / drain), `diff` (keeps foreign bits), `write_runs`, clock encode/decode. |
+| `custom_components/battery_mode/registers.py` | Pure: register map, slot layout, profiles (max / night / charge fast / drain), `diff` (keeps foreign bits), `write_runs`, clock encode/decode, `active_slot` / `discharge_floor` (slot SOC, at least Low Batt, with grid; shutdown SOC without). |
 | `.../inverter.py` | `DeyeClient`: `solarman.read_holding_registers` / `write_multiple_registers`. |
-| `.../controller.py` | `Controller`: persisted mode / charge-now / training / pending / restore_shutdown (`Store` `battery_mode.<entry_id>`), apply with read-back, actual-mode detection, training state machine, clock sync. |
+| `.../controller.py` | `Controller`: persisted mode / charge-now / training / pending / restore_shutdown / restore_low (`Store` `battery_mode.<entry_id>`), apply with read-back, actual-mode detection, training state machine (drain lowers shutdown SOC and Low Batt), `floor`, clock sync. |
 | `.../select.py` `sensor.py` `switch.py` `button.py` | Entities on the entry's service device. |
 | `tests/conftest.py` | `FakeDeye` behind fake solarman services (live register values of 2026-11-21, silent rejection, unreachable logger). |
 
@@ -32,9 +32,13 @@ on (Phase 0 tests, register quirks): `../deye-inverter/battery-modes.md`. README
 ## Live
 
 - Entity ids (renamed after install): `select.batareia_rezhym`, `sensor.batareia_rezhym_fakt`, `sensor.batareia_trenuvannia`,
-  `switch.batareia_zariadyty_zaraz`, `button.batareia_zastosuvaty_rezhym`, `button.batareia_skasuvaty_trenuvannia`;
+  `switch.batareia_zariadyty_zaraz`, `button.batareia_zastosuvaty_rezhym`, `button.batareia_skasuvaty_trenuvannia`,
+  `sensor.batareia_mezha_rozriadu` (grid_load_shedding's battery reserve entity since 2026-11-21);
   device «Батарея».
 - First apply 2026-11-21 00:23 UTC: only the slot times changed (01/05/…/21 → 03/07/11/15/19/23), mode Максимум.
+- Training runs (2026-11-21, details in `../deye-inverter/battery-modes.md`): the first stopped at 35 % = Low Batt
+  (stall), cancelled by the user while charging; the second started 19:20 Kyiv at 39 % with Low Batt and shutdown SOC
+  both 5 % (Deye accepted them).
 - Updating: bump version, push, GitHub release, then WS `marketplace/repository/install` with `repository: "1466029200"`,
   `version: "vX.Y.Z"`, then restart Core (updates need a restart).
 - Push: `git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$(cat ~/.config/github/token-grid-load-shedding)" | base64 -w0)" push`

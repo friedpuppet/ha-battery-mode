@@ -45,7 +45,7 @@
         },
         "data_description": {
           "peak_limit": "Deye cuts charging (and helps from the battery) to keep grid import under this.",
-          "floor": "The inverter's shutdown SOC is lowered to this for the training drain and restored after.",
+          "floor": "The inverter's shutdown SOC and Low Batt (its floor with grid) are lowered to this for the training drain and restored after.",
           "full_soc": "Deye often sits at 99 % on float."
         }
       }

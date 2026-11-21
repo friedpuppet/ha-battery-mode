@@ -12,8 +12,8 @@ Personal project, installed as a HACS / Marketplace custom repository.
 | Mode | TOU slots | Charge current | Notes |
 |---|---|---|---|
 | **Max charge** | all six: SOC 100 %, grid charge | normal (40 A) | Battery held full whenever there is grid. |
-| **Night charging** | night: SOC 100 %, grid charge; day: SOC = reserve (30 %), grid charge | fast (60 A) | Day runs from the battery down to the reserve, then from the grid. |
-| **Training** | drain: all SOC = floor (5 %), no grid charge; then Max charge slots | fast | One cycle: shutdown SOC lowered to the floor, discharge with grid present, charge to full, measured Ah/kWh, settings restored, back to the previous mode. |
+| **Night charging** | night: SOC 100 %, grid charge; day: SOC = reserve (30 %), grid charge | fast (60 A) | Day runs from the battery down to the reserve, then from the grid. Deye never goes below Low Batt with grid, so a reserve under Low Batt is really Low Batt. |
+| **Training** | drain: all SOC = floor (5 %), no grid charge; then Max charge slots | fast | One cycle: shutdown SOC and Low Batt lowered to the floor, discharge with grid present, charge to full, measured Ah/kWh, settings restored, back to the previous mode. |
 
 Plus **Charge to 100 % now** (`switch`): Max-charge slots at the fast current until full, then back to
 the selected mode. Grid peak shaving is on in every mode (limit 5000 W by default), so the charge is
@@ -52,8 +52,9 @@ Six slots: two over the night window (23:00–07:00 by default), four over the d
   0x06), then read back. A value the inverter silently rejects is reported (persistent notification,
   `error` attribute) and not retried every 5 minutes.
 - TOU stays enabled: Deye sets its enable bit again within minutes of clearing it.
-- Training: a definite grid loss during the drain aborts it. The original shutdown SOC is written back
-  only once the battery is 5 % above it, so restoring it never shuts the flat down at once. A grid loss
+- Training: a definite grid loss during the drain aborts it. Low Batt is written back at once (without grid it is
+  only a warning). The original shutdown SOC is written back only once the battery is 5 % above it, so restoring it
+  never shuts the flat down at once. A restore that can't reach the inverter is retried on the 5-min refresh. A grid loss
   during the charge marks the measurement invalid. "Full" = SOC ≥ 99 % and |current| ≤ 5 A for 10 min.
 - The inverter clock is checked hourly and set when it is more than 60 s off (TOU follows it).
 
