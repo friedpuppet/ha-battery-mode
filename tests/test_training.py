@@ -17,7 +17,7 @@ from custom_components.battery_mode.registers import (
     REG_SLOT_SOC,
 )
 
-from .conftest import ACTUAL, CANCEL, CHARGE_NOW, GRID, MODE, TRAINING, FakeDeye, set_battery, setup_entry
+from .conftest import ACTUAL, CANCEL, FLOOR, CHARGE_NOW, GRID, MODE, TRAINING, FakeDeye, set_battery, setup_entry
 
 
 async def select(hass: HomeAssistant, option: str) -> None:
@@ -52,6 +52,7 @@ async def test_full_cycle(hass: HomeAssistant, deye: FakeDeye, freezer: FrozenDa
     assert all(deye.registers[REG_SLOT_CHARGE + i] & 0x3 == 0 for i in range(6))
     assert deye.registers[REG_SHUTDOWN_SOC] == 5
     assert deye.registers[REG_LOW_SOC] == 5  # with grid Deye stops at Low Batt, not at the shutdown SOC
+    assert hass.states.get(FLOOR).state == "5"
     assert hass.states.get(TRAINING).attributes["original_low_soc"] == 35
 
     # discharging

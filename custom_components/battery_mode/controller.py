@@ -66,6 +66,7 @@ from .const import (
 )
 from .inverter import DeyeClient, InverterError
 from .registers import (
+    discharge_floor,
     REG_CLOCK,
     REG_LOW_SOC,
     REG_SHUTDOWN_SOC,
@@ -130,6 +131,7 @@ class Controller:
         self._restoring = False
         self._applying = False
         self._dirty = False
+        self._last_floor: int | None = None
 
     # ---- settings and inputs -------------------------------------------------------------
 
@@ -167,6 +169,14 @@ class Controller:
     def visible(self) -> bool:
         """HA sees the inverter (its SOC entity has a value)."""
         return self.soc is not None
+
+    @property
+    def floor(self) -> int | None:
+        """The charge the inverter stops discharging at now, from the registers last read."""
+        if not self.registers:
+            return None
+        now = dt_util.now()
+        return discharge_floor(self.registers, now.hour * 60 + now.minute, not self._grid_off())
 
     def _grid_off(self) -> bool:
         """True only for a definite «off»; unknown/unavailable is not a grid loss."""
@@ -513,12 +523,21 @@ class Controller:
     @callback
     def _on_state(self, _event: Event[EventStateChangedData]) -> None:
         self._evaluate()
+        self._notify_floor()
 
     @callback
     def _on_tick(self, _now: datetime) -> None:
         self._evaluate()
+        self._notify_floor()
         if self._dirty:
             self._dirty = False
+            self._notify()
+
+    @callback
+    def _notify_floor(self) -> None:
+        """Slot boundaries and grid changes move the floor without any register changing."""
+        if (floor := self.floor) != self._last_floor:
+            self._last_floor = floor
             self._notify()
 
     @callback

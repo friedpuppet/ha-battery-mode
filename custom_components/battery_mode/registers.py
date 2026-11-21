@@ -232,3 +232,23 @@ def decode_clock(values: list[int], tzinfo) -> datetime:
         values[2] & 0xFF,
         tzinfo=tzinfo,
     )
+
+
+def active_slot(registers: dict[int, int], minute: int) -> int:
+    """Index of the TOU slot in force at ``minute`` of the inverter's day (a slot runs to the next start)."""
+    starts = [(registers[REG_SLOT_TIME + i] // 100) * 60 + registers[REG_SLOT_TIME + i] % 100 for i in range(SLOTS)]
+    started = [i for i in range(SLOTS) if starts[i] <= minute]
+    if started:
+        return max(started, key=lambda i: starts[i])
+    return max(range(SLOTS), key=lambda i: starts[i])  # before the first start: the last slot of yesterday
+
+
+def discharge_floor(registers: dict[int, int], minute: int, grid: bool) -> int:
+    """The charge Deye stops discharging at.
+
+    With grid: the slot SOC, but never below Low Batt (Deye clamps the slot to it; found 2026-11-21).
+    Without grid: the shutdown SOC.
+    """
+    if not grid:
+        return registers[REG_SHUTDOWN_SOC]
+    return max(registers[REG_SLOT_SOC + active_slot(registers, minute)], registers[REG_LOW_SOC])
