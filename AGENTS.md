@@ -7,7 +7,7 @@ on (Phase 0 tests, register quirks): `../deye-inverter/battery-modes.md`. README
 
 ## Status
 
-- v0.1.0 released 2026-11-21, installed on the live HA via Marketplace (repo id `1466029200`), entry «Батарея» `01M7XQQE5FZ7JTZBWVHFN7A1P5`. v0.1.1: `slots` / currents / peak attributes on Actual mode (ha-solarman polls those registers rarely, its entities lag). v0.1.2: the training bottom is also a stall at any SOC (was only ≤ floor + 3 %), attribute `bottom_reason` soc/stall. v0.1.3: the drain phase lowers Low Batt (0xDB) too: with grid Deye stops at Low Batt, not at the shutdown SOC (first training stopped at 35 % = Low Batt on 2026-11-21). Tests wait for background tasks (`wait_background_tasks=True`). v0.1.4 added a Discharge floor sensor (`sensor.batareia_mezha_rozriadu`) as grid_load_shedding's reserve; v0.1.5 (2026-11-22) removed it again, unused since grid_load_shedding v0.11.0 counts to Deye's shutdown SOC (the user: the full discharge, independent of mode). Tests: 37 passed.
+- v0.1.0 released 2026-11-21, installed on the live HA via Marketplace (repo id `1466029200`), entry «Батарея» `01M7XQQE5FZ7JTZBWVHFN7A1P5`. v0.1.1: `slots` / currents / peak attributes on Actual mode (ha-solarman polls those registers rarely, its entities lag). v0.1.2: the training bottom is also a stall at any SOC (was only ≤ floor + 3 %), attribute `bottom_reason` soc/stall. v0.1.3: the drain phase lowers Low Batt (0xDB) too: with grid Deye stops at Low Batt, not at the shutdown SOC (first training stopped at 35 % = Low Batt on 2026-11-21). Tests wait for background tasks (`wait_background_tasks=True`). v0.1.4 added a Discharge floor sensor (`sensor.batareia_mezha_rozriadu`) as grid_load_shedding's reserve; v0.1.5 (2026-11-22, released and live) removed it again: nothing uses it since the time left counts to Deye's shutdown SOC (the user: the full discharge, independent of mode; now `../battery-monitor/`). Tests: 37 passed.
 - Same conventions as `../grid-load-shedding/` (personal project, Marketplace custom repository, hassfest + pytest CI,
   bump `manifest.json` `version` per release).
 
@@ -32,8 +32,7 @@ on (Phase 0 tests, register quirks): `../deye-inverter/battery-modes.md`. README
 ## Live
 
 - Entity ids (renamed after install): `select.batareia_rezhym`, `sensor.batareia_rezhym_fakt`, `sensor.batareia_trenuvannia`,
-  `switch.batareia_zariadyty_zaraz`, `button.batareia_zastosuvaty_rezhym`, `button.batareia_skasuvaty_trenuvannia`,
-  `sensor.batareia_mezha_rozriadu` (grid_load_shedding's battery reserve entity since 2026-11-21);
+  `switch.batareia_zariadyty_zaraz`, `button.batareia_zastosuvaty_rezhym`, `button.batareia_skasuvaty_trenuvannia`;
   device «Батарея».
 - First apply 2026-11-21 00:23 UTC: only the slot times changed (01/05/…/21 → 03/07/11/15/19/23), mode Максимум.
 - Training runs (2026-11-21, details in `../deye-inverter/battery-modes.md`): the first stopped at 35 % = Low Batt
