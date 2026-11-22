@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
-from homeassistant.const import PERCENTAGE
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -50,7 +49,7 @@ def _inverter(registers: dict[int, int] | None) -> dict[str, Any]:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddConfigEntryEntitiesCallback) -> None:
-    async_add_entities([ActualModeSensor(entry), TrainingSensor(entry), FloorSensor(entry)])
+    async_add_entities([ActualModeSensor(entry), TrainingSensor(entry)])
 
 
 def _iso(value) -> str | None:
@@ -103,22 +102,3 @@ class TrainingSensor(BatteryModeEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         t = self.controller.training
         return {k: v for k, v in t.items() if k != "phase"}
-
-
-class FloorSensor(BatteryModeEntity, SensorEntity):
-    """The charge the inverter stops discharging at right now.
-
-    With grid the slot SOC of the TOU slot in force (Low Batt at least), without grid the shutdown
-    SOC. For time-left estimates: the reserve is wherever the inverter actually stops.
-    """
-
-    _attr_native_unit_of_measurement = PERCENTAGE
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_icon = "mdi:battery-arrow-down-outline"
-
-    def __init__(self, entry) -> None:
-        super().__init__(entry, "discharge_floor")
-
-    @property
-    def native_value(self) -> int | None:
-        return self.controller.floor

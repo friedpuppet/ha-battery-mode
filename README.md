@@ -36,9 +36,6 @@ Six slots: two over the night window (23:00–07:00 by default), four over the d
   The bottom is reached when SOC ≤ the floor (`bottom_reason: soc`) or when the battery hasn't
   discharged (≤ 50 W) for 5 minutes at any SOC while the drain profile is in place (`stall`: Deye's
   shutdown voltage, a BMS discharge limit or its own SOC clamp stopped it).
-- `sensor` **Discharge floor** (%): where the inverter stops discharging right now. With grid the SOC of the TOU
-  slot in force, at least Low Batt; without grid the shutdown SOC. For time-left estimates (grid_load_shedding's
-  battery reserve entity).
 - `switch` **Charge to 100 % now**.
 - `button` **Apply mode again** (rewrites the profile, e.g. after a manual change), **Cancel training**.
 

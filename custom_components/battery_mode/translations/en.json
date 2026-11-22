@@ -100,9 +100,6 @@
           "done": "Done",
           "aborted": "Aborted"
         }
-      },
-      "discharge_floor": {
-        "name": "Discharge floor"
       }
     }
   }

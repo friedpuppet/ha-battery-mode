@@ -15,9 +15,7 @@ from custom_components.battery_mode.registers import (
     Field,
     Settings,
     Slot,
-    active_slot,
     decode_clock,
-    discharge_floor,
     diff,
     encode_clock,
     mismatches,
@@ -99,25 +97,3 @@ def test_clock_round_trip() -> None:
     values = encode_clock(now)
     assert values == [(26 << 8) | 11, (21 << 8) | 1, (29 << 8) | 26]
     assert decode_clock(values, tz) == now
-
-
-def test_active_slot_wraps_midnight() -> None:
-    registers = dict(LIVE)
-    for i, t in enumerate([300, 700, 1100, 1500, 1900, 2300]):
-        registers[REG_SLOT_TIME + i] = t
-    assert active_slot(registers, 3 * 60) == 0
-    assert active_slot(registers, 12 * 60) == 2
-    assert active_slot(registers, 23 * 60 + 30) == 5
-    assert active_slot(registers, 60) == 5  # 01:00 is still the 23:00 slot
-
-
-def test_discharge_floor() -> None:
-    registers = dict(LIVE)  # Low Batt 35, shutdown 20
-    for i, (t, soc) in enumerate(zip([300, 700, 1100, 1500, 1900, 2300], [100, 30, 30, 30, 30, 100])):
-        registers[REG_SLOT_TIME + i] = t
-        registers[REG_SLOT_SOC + i] = soc
-    assert discharge_floor(registers, 12 * 60, grid=True) == 35  # slot 30 clamped to Low Batt
-    assert discharge_floor(registers, 1 * 60, grid=True) == 100
-    assert discharge_floor(registers, 12 * 60, grid=False) == 20
-    registers[0xDB] = 25
-    assert discharge_floor(registers, 12 * 60, grid=True) == 30

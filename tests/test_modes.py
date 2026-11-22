@@ -1,12 +1,11 @@
 """Modes, the actual-mode sensor, blind inverter, rejected writes, charge now, clock."""
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from freezegun.api import FrozenDateTimeFactory
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from homeassistant.core import HomeAssistant
-from homeassistant.util import dt as dt_util
 
 from custom_components.battery_mode.registers import (
     REG_CLOCK,
@@ -16,7 +15,7 @@ from custom_components.battery_mode.registers import (
     REG_SLOT_TIME,
 )
 
-from .conftest import ACTUAL, FLOOR, APPLY, CHARGE_NOW, GRID, MODE, SOC, FakeDeye, make_entry, set_battery, setup_entry
+from .conftest import ACTUAL, APPLY, CHARGE_NOW, GRID, MODE, SOC, FakeDeye, make_entry, set_battery, setup_entry
 
 
 async def select(hass: HomeAssistant, option: str) -> None:
@@ -178,19 +177,3 @@ async def test_mode_survives_restart(hass: HomeAssistant, deye: FakeDeye) -> Non
     await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(MODE).state == "night"
     assert hass.states.get(SOC).state == "99"
-
-
-async def test_discharge_floor_follows_slot_and_grid(
-    hass: HomeAssistant, deye: FakeDeye, freezer: FrozenDateTimeFactory
-) -> None:
-    freezer.move_to(datetime(2026, 11, 21, 22, 58, tzinfo=dt_util.get_default_time_zone()))
-    set_battery(hass, 80)
-    hass.states.async_set(GRID, "on")
-    await setup_entry(hass)
-    await select(hass, "night")
-    assert hass.states.get(FLOOR).state == "35"  # day slot 30, Low Batt 35
-    await tick(hass, freezer, 3)  # 23:01: the night slot
-    assert hass.states.get(FLOOR).state == "100"
-    hass.states.async_set(GRID, "off")
-    await hass.async_block_till_done(wait_background_tasks=True)
-    assert hass.states.get(FLOOR).state == "20"  # shutdown SOC
