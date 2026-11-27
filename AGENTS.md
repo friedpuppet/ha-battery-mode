@@ -7,7 +7,7 @@ on (Phase 0 tests, register quirks): `../deye-inverter/battery-modes.md`. README
 
 ## Status
 
-- v0.1.0 released 2026-11-21, installed on the live HA via Marketplace (repo id `1466029200`), entry «Батарея» `01M7XQQE5FZ7JTZBWVHFN7A1P5`. v0.1.1: `slots` / currents / peak attributes on Actual mode (ha-solarman polls those registers rarely, its entities lag). v0.1.2: the training bottom is also a stall at any SOC (was only ≤ floor + 3 %), attribute `bottom_reason` soc/stall. v0.1.3: the drain phase lowers Low Batt (0xDB) too: with grid Deye stops at Low Batt, not at the shutdown SOC (first training stopped at 35 % = Low Batt on 2026-11-21). Tests wait for background tasks (`wait_background_tasks=True`). v0.1.4 added a Discharge floor sensor (`sensor.batareia_mezha_rozriadu`) as grid_load_shedding's reserve; v0.1.5 (2026-11-22, released and live) removed it again: nothing uses it since the time left counts to Deye's shutdown SOC (the user: the full discharge, independent of mode; now `../battery-monitor/`). Tests: 37 passed.
+- v0.1.0 released 2026-11-21, installed on the live HA via Marketplace (repo id `1466029200`), entry «Батарея» `01M7XQQE5FZ7JTZBWVHFN7A1P5`. v0.1.1: `slots` / currents / peak attributes on Actual mode (ha-solarman polls those registers rarely, its entities lag). v0.1.2: the training bottom is also a stall at any SOC (was only ≤ floor + 3 %), attribute `bottom_reason` soc/stall. v0.1.3: the drain phase lowers Low Batt (0xDB) too: with grid Deye stops at Low Batt, not at the shutdown SOC (first training stopped at 35 % = Low Batt on 2026-11-21). Tests wait for background tasks (`wait_background_tasks=True`). v0.1.4 added a Discharge floor sensor (`sensor.batareia_mezha_rozriadu`) as grid_load_shedding's reserve; v0.1.5 (2026-11-22, released and live) removed it again: nothing uses it since the time left counts to Deye's shutdown SOC (the user: the full discharge, independent of mode; now `../battery-monitor/`). Tests: 37 passed. v0.1.6 (2026-11-27, live): the training floor option may be 0 % (was min 1); the third training run (started 21:47 Kyiv at 31 %) was switched to floor 0 mid-drain at the user's request, Deye accepted 0 for 0xD9/0xDB and all slot SOCs (raw read-back).
 - Same conventions as `../grid-load-shedding/` (personal project, Marketplace custom repository, hassfest + pytest CI,
   bump both `manifest.json` and `pyproject.toml` `version` per release).
 
@@ -26,7 +26,7 @@ on (Phase 0 tests, register quirks): `../deye-inverter/battery-modes.md`. README
 - Night mode holds a reserve in the day natively (no 30→50 % day recharge at the day tariff).
 - 60 A at night with Deye grid peak shaving at 5000 W (everything goes through the Deye; 25 A input breaker tolerates
   short overloads; lower it if the breaker trips).
-- Training: one cycle, floor 5 %, back to the previous mode.
+- Training: one cycle, floor 5 % (0 % since 2026-11-27, the user wants the full usable capacity), back to the previous mode.
 - Charge-now override added (one-shot, ends when full).
 
 ## Live
