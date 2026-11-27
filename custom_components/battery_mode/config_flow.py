@@ -128,7 +128,7 @@ class BatteryModeOptionsFlow(OptionsFlow):
                 vol.Required(CONF_NORMAL_CURRENT, default=current[CONF_NORMAL_CURRENT]): _number(0, 240, "A"),
                 vol.Required(CONF_FAST_CURRENT, default=current[CONF_FAST_CURRENT]): _number(0, 240, "A"),
                 vol.Required(CONF_PEAK_LIMIT, default=current[CONF_PEAK_LIMIT]): _number(1000, 22000, "W", 100),
-                vol.Required(CONF_FLOOR, default=current[CONF_FLOOR]): _number(1, 50, "%"),
+                vol.Required(CONF_FLOOR, default=current[CONF_FLOOR]): _number(0, 50, "%"),
                 vol.Required(CONF_FULL_SOC, default=current[CONF_FULL_SOC]): _number(90, 100, "%"),
                 vol.Required(CONF_FULL_CURRENT, default=current[CONF_FULL_CURRENT]): _number(0, 50, "A"),
                 vol.Required(CONF_FULL_MINUTES, default=current[CONF_FULL_MINUTES]): _number(1, 120, "min"),
